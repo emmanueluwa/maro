@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.main import create_app, get_settings
+from app.config import get_settings
+from app.main import create_app
 
 AppFactory = Callable[..., TestClient]
 
@@ -17,6 +18,10 @@ def make_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[AppFactory]:
 
     def _make(environment: str = "development") -> TestClient:
         monkeypatch.setenv("APP_ENVIRONMENT", environment)
+        # Production refuses the development database, so tests always supply one.
+        monkeypatch.setenv(
+            "APP_DATABASE_URL", "postgresql+asyncpg://test:test@db.test:5432/test"
+        )
         get_settings.cache_clear()
         return TestClient(create_app())
 

@@ -9,35 +9,15 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from functools import lru_cache
-from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.config import get_settings
+
 logger = logging.getLogger("app")
-
-
-class Settings(BaseSettings):
-    """Configuration, read from environment variables prefixed with APP_."""
-
-    model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
-
-    environment: Literal["development", "staging", "production"] = "development"
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    allowed_origins: list[str] = ["http://localhost:3000"]
-
-    @property
-    def is_production(self) -> bool:
-        return self.environment == "production"
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
 
 
 class RequestContextMiddleware:
@@ -73,7 +53,9 @@ class RequestContextMiddleware:
                 headers["Referrer-Policy"] = "no-referrer"
                 headers["Cache-Control"] = "no-store"
                 if self.enable_hsts:
-                    headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+                    headers["Strict-Transport-Security"] = (
+                        "max-age=63072000; includeSubDomains"
+                    )
             await send(message)
 
         try:
@@ -97,7 +79,7 @@ def create_app() -> FastAPI:
     )
 
     app = FastAPI(
-        title="Research Companion API",
+        title="Maro API",
         # API docs are useful while building but are not exposed in production.
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
