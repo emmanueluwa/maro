@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.db import check_connection, create_engine, create_session_factory
 
@@ -129,6 +130,8 @@ def create_app() -> FastAPI:
             return {"status": "ready"}
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "unavailable"}
+
+    app.include_router(auth_router)
 
     return app
 
