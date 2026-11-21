@@ -11,23 +11,10 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from app.db import Base, create_session_factory
+from app.db import create_session_factory
 from app.models import AuthSession, User
 
-pytestmark = pytest.mark.anyio
-
-
-@pytest.fixture(scope="module")
-async def tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-
-
-@pytest.fixture(autouse=True)
-async def empty_tables(engine: AsyncEngine, tables: None) -> None:
-    """Every test starts with no users and no sessions."""
-    async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE users CASCADE"))
+pytestmark = [pytest.mark.anyio, pytest.mark.usefixtures("empty_tables")]
 
 
 @pytest.fixture

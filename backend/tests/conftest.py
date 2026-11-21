@@ -15,10 +15,11 @@ from dotenv import dotenv_values
 from sqlalchemy import text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
+import app.models  # noqa: F401  (importing it registers every model on Base.metadata)
 from app.config import DEV_DATABASE_URL, Settings
-from app.db import create_engine
+from app.db import Base, create_engine, create_session_factory
 
 TEST_DATABASE_NAME = "maro_test"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -115,3 +116,29 @@ async def engine(test_url: URL) -> AsyncIterator[AsyncEngine]:
     engine = create_engine(settings, pool_size=2, max_overflow=0)
     yield engine
     await engine.dispose()
+
+
+# --- Shared tables and sessions -----------------------------------------------
+# For tests that need the application's real tables. The tables are created once
+# per run; every test that asks for `empty_tables` (or `db`) starts with them empty.
+
+
+@pytest.fixture(scope="session")
+async def tables(engine: AsyncEngine) -> None:
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+
+
+@pytest.fixture
+async def empty_tables(engine: AsyncEngine, tables: None) -> None:
+    """Empty every application table. Table names come from the models, never from input."""
+    names = ", ".join(table.name for table in Base.metadata.sorted_tables)
+    async with engine.begin() as connection:
+        await connection.execute(text(f"TRUNCATE {names} CASCADE"))
+
+
+@pytest.fixture
+async def db(engine: AsyncEngine, empty_tables: None) -> AsyncIterator[AsyncSession]:
+    """A database session, starting from empty tables."""
+    async with create_session_factory(engine)() as session:
+        yield session

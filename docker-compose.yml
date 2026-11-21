@@ -1,0 +1,35 @@
+# Local development services. Not used in production.
+#
+#   docker compose up -d      start the database in the background
+#   docker compose ps         check it is "healthy"
+#   docker compose down       stop it (your data is kept)
+#   docker compose down -v    stop it AND delete all local data
+#
+# If port 5432 is already taken on your machine, create a file named .env next
+# to this one containing, for example:   MARO_DB_PORT=5433
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      # These match the default APP_DATABASE_URL in backend/app/config.py.
+      # They are for local development only and must never be used anywhere else.
+      POSTGRES_USER: maro
+      POSTGRES_PASSWORD: maro
+      POSTGRES_DB: maro
+    # Bound to 127.0.0.1 so the database is reachable from this machine only,
+    # never from other devices on the network. The host port defaults to 5432.
+    ports:
+      - "127.0.0.1:${MARO_DB_PORT:-5432}:5432"
+    volumes:
+      - maro_pgdata:/var/lib/postgresql/data
+    # Log any query slower than half a second, which helps spot problems early.
+    command: ["postgres", "-c", "log_min_duration_statement=500"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maro -d maro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  maro_pgdata:

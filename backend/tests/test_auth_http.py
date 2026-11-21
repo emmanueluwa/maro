@@ -10,9 +10,9 @@ from datetime import UTC, datetime, timedelta
 import httpx2
 import pytest
 from fastapi import Response
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.engine import URL
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import (
     COOKIE_NAME,
@@ -27,7 +27,6 @@ from app.auth.sessions import (
     revoke_token,
 )
 from app.config import Settings, get_settings
-from app.db import Base, create_session_factory
 from app.main import create_app
 from app.models import AuthSession, User
 
@@ -40,24 +39,6 @@ PRODUCTION_URL = "postgresql+asyncpg://u:p@db.internal:5432/maro"
 
 
 # --- fixtures and helpers ------------------------------------------------------
-
-
-@pytest.fixture(scope="module")
-async def tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-
-
-@pytest.fixture
-async def empty_tables(engine: AsyncEngine, tables: None) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE users CASCADE"))
-
-
-@pytest.fixture
-async def db(engine: AsyncEngine, empty_tables: None) -> AsyncIterator[AsyncSession]:
-    async with create_session_factory(engine)() as session:
-        yield session
 
 
 @asynccontextmanager

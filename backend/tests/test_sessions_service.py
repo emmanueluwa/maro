@@ -4,12 +4,11 @@ Time is controlled by passing `now`, so expiry and idle rules are tested without
 """
 
 import hashlib
-from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import sessions
 from app.auth.sessions import (
@@ -26,31 +25,11 @@ from app.auth.sessions import (
     revoke_token,
     touch_session,
 )
-from app.db import Base, create_session_factory
 from app.models import AuthSession, User
 
 pytestmark = pytest.mark.anyio
 
 NOW = datetime(2026, 11, 21, 12, 0, tzinfo=UTC)
-
-
-@pytest.fixture(scope="module")
-async def tables(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
-
-
-@pytest.fixture
-async def empty_tables(engine: AsyncEngine, tables: None) -> None:
-    async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE users CASCADE"))
-
-
-@pytest.fixture
-async def db(engine: AsyncEngine, empty_tables: None) -> AsyncIterator[AsyncSession]:
-    """A database session, starting from empty tables."""
-    async with create_session_factory(engine)() as session:
-        yield session
 
 
 async def make_user(
