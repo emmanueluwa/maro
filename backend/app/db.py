@@ -6,6 +6,8 @@ without needing a database.
 """
 
 from __future__ import annotations
+import asyncio
+import logging
 
 import logging
 from collections.abc import AsyncIterator
@@ -82,11 +84,16 @@ def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSessi
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
-async def check_connection(engine: AsyncEngine) -> bool:
-    """Return True if the database answers a trivial query. Used by the readiness check."""
+async def check_connection(engine: AsyncEngine, *, timeout: float = 3.0) -> bool:
+    """Return True if the database answers a trivial query within `timeout` seconds.
+
+    Used by the readiness check. The time limit matters: a database that accepts
+    connections but never answers must not make the check hang.
+    """
     try:
-        async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
+        async with asyncio.timeout(timeout):
+            async with engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
     except (SQLAlchemyError, OSError, TimeoutError) as error:
         # Log only the error type: messages can contain connection details.
         logger.warning("database check failed: %s", type(error).__name__)

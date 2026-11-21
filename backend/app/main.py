@@ -9,13 +9,16 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import get_settings
+from app.db import check_connection, create_engine, create_session_factory
 
 logger = logging.getLogger("app")
 
@@ -71,6 +74,24 @@ class RequestContextMiddleware:
             )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Create the database connection pool at startup and close it at shutdown.
+
+    Startup does not wait for the database. If it is down, the app still starts and
+    /ready reports unavailable until it recovers, so the service never crash-loops.
+    """
+    engine = create_engine(get_settings())
+    app.state.engine = engine
+    app.state.session_factory = create_session_factory(engine)
+    logger.info("database connection pool created")
+    try:
+        yield
+    finally:
+        await engine.dispose()
+        logger.info("database connection pool closed")
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     logging.basicConfig(
@@ -80,6 +101,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Maro API",
+        lifespan=lifespan,
         # API docs are useful while building but are not exposed in production.
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
@@ -99,6 +121,14 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
+
+    @app.get("/ready", tags=["system"])
+    async def ready(request: Request, response: Response) -> dict[str, str]:
+        """Readiness: can this instance serve real traffic? Unlike /health, it needs the database."""
+        if await check_connection(request.app.state.engine):
+            return {"status": "ready"}
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable"}
 
     return app
 

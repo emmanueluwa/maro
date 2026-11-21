@@ -1,16 +1,10 @@
 """Tests for the database layer, run against a real PostgreSQL.
 
-They use a separate throwaway database called `maro_test`, created on the same
-server your app is configured for and deleted afterwards. Your own data is never
-touched, and the tests refuse to run against any server that is not on this machine.
-
-If no database is reachable the tests are skipped, with a hint. Set
-MARO_REQUIRE_DATABASE=1 (for example in CI) to make that a failure instead.
+The throwaway test database and the shared `engine` fixture come from conftest.py.
 """
 
-import os
 import time
-from collections.abc import AsyncIterator
+from collections.abc import Callable
 
 import pytest
 from fastapi import FastAPI
@@ -25,8 +19,8 @@ from sqlalchemy import (
     select,
     text,
 )
-from sqlalchemy.engine import URL, make_url
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.engine import URL
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from starlette.requests import Request
 
@@ -43,59 +37,12 @@ from app.db import (
 pytestmark = pytest.mark.anyio
 
 TEST_DATABASE_NAME = "maro_test"
-LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
-
-
-def build_test_database_url(developer_url: str) -> URL:
-    """Point at the throwaway test database, and refuse anything that is not local."""
-    url = make_url(developer_url)
-    if url.host not in LOCAL_HOSTS:
-        raise RuntimeError(
-            f"Refusing to run database tests against non-local host {url.host!r}"
-        )
-    return url.set(database=TEST_DATABASE_NAME)
 
 
 def settings_for(url: URL) -> Settings:
     return Settings(
         _env_file=None, database_url=url.render_as_string(hide_password=False)
     )
-
-
-@pytest.fixture(scope="module")
-async def test_url(developer_database_url: str) -> AsyncIterator[URL]:
-    """Create a fresh test database for this module and drop it afterwards."""
-    url = build_test_database_url(developer_database_url)
-    admin = create_async_engine(
-        url.set(database="postgres"), isolation_level="AUTOCOMMIT"
-    )
-    try:
-        async with admin.connect() as connection:
-            await connection.execute(
-                text(f"DROP DATABASE IF EXISTS {TEST_DATABASE_NAME} WITH (FORCE)")
-            )
-            await connection.execute(text(f"CREATE DATABASE {TEST_DATABASE_NAME}"))
-    except (SQLAlchemyError, OSError) as error:
-        await admin.dispose()
-        message = f"No database reachable ({type(error).__name__}). Start it with: docker compose up -d"
-        if os.environ.get("MARO_REQUIRE_DATABASE"):
-            pytest.fail(message)
-        pytest.skip(message)
-
-    yield url
-
-    async with admin.connect() as connection:
-        await connection.execute(
-            text(f"DROP DATABASE IF EXISTS {TEST_DATABASE_NAME} WITH (FORCE)")
-        )
-    await admin.dispose()
-
-
-@pytest.fixture(scope="module")
-async def engine(test_url: URL) -> AsyncIterator[AsyncEngine]:
-    engine = create_engine(settings_for(test_url), pool_size=2, max_overflow=0)
-    yield engine
-    await engine.dispose()
 
 
 @pytest.fixture(scope="module")
@@ -113,15 +60,17 @@ async def things(engine: AsyncEngine) -> Table:
     return table
 
 
-def test_refuses_non_local_database_servers() -> None:
+def test_refuses_non_local_database_servers(
+    database_url_builder: Callable[[str], URL],
+) -> None:
     with pytest.raises(RuntimeError, match="non-local"):
-        build_test_database_url(
-            "postgresql+asyncpg://u:p@db.production.example:5432/maro"
-        )
+        database_url_builder("postgresql+asyncpg://u:p@db.production.example:5432/maro")
 
 
-def test_test_database_is_never_the_developers_own() -> None:
-    url = build_test_database_url("postgresql+asyncpg://maro:maro@localhost:5433/maro")
+def test_test_database_is_never_the_developers_own(
+    database_url_builder: Callable[[str], URL],
+) -> None:
+    url = database_url_builder("postgresql+asyncpg://maro:maro@localhost:5433/maro")
     assert url.database == TEST_DATABASE_NAME
     assert url.port == 5433
 
