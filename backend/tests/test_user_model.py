@@ -25,7 +25,7 @@ async def users_table(engine: AsyncEngine) -> None:
 async def empty_users_table(engine: AsyncEngine, users_table: None) -> None:
     """Every test starts with no users."""
     async with engine.begin() as connection:
-        await connection.execute(text("TRUNCATE users"))
+        await connection.execute(text("TRUNCATE users CASCADE"))
 
 
 @pytest.fixture

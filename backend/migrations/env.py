@@ -6,7 +6,7 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import pool, text
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -42,7 +42,8 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     # Postgres can undo schema changes, so a failed migration leaves nothing half-done.
-    connection.execute(text(f"SET lock_timeout = '{LOCK_TIMEOUT}'"))
+    # Nothing may be executed on the connection before this point: that would open a
+    # transaction Alembic does not own, and it would then never commit the migration.
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -56,8 +57,11 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_migrations_online() -> None:
     # The address comes from the app settings, not alembic.ini, so the password is
     # never written to a config file. NullPool: a migration is one short-lived job.
+    # The lock timeout is set when the connection opens, not with a SET command afterwards.
     engine = create_async_engine(
-        str(get_settings().database_url), poolclass=pool.NullPool
+        str(get_settings().database_url),
+        poolclass=pool.NullPool,
+        connect_args={"server_settings": {"lock_timeout": LOCK_TIMEOUT}},
     )
     try:
         async with engine.connect() as connection:
