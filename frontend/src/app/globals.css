@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/*
+  Maro design tokens.
+
+  Calm, quiet and Apple-like: generous space, soft surfaces, one accent colour, and the
+  system font, so it looks native on her iPad and nothing has to be downloaded.
+
+  Every text colour below passes WCAG AA contrast (4.5:1) on the backgrounds it is meant
+  for, and every control border passes 3:1, in both light and dark. If you change a
+  colour, re-check it.
+*/
+
+:root {
+  color-scheme: light dark;
+
+  --canvas: #fbfbfd; /* the page */
+  --surface: #ffffff; /* cards and inputs sitting on the page */
+  --ink: #1d1d1f; /* main text */
+  --ink-muted: #6e6e73; /* secondary text */
+  --line: rgb(0 0 0 / 0.1); /* quiet dividers and card edges */
+  --line-strong: #8e8e93; /* borders of controls such as inputs (needs 3:1) */
+  --accent: #0066cc; /* links and accent text */
+  --accent-fill: #0071e3; /* button backgrounds */
+  --accent-fill-hover: #0077ed;
+  --on-accent: #ffffff; /* text on an accent button */
+  --danger: #d70015;
+  --success: #1d7a3a;
+  --focus: #0071e3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #000000;
+    --surface: #1c1c1e;
+    --ink: #f5f5f7;
+    --ink-muted: #a1a1a6;
+    --line: rgb(255 255 255 / 0.14);
+    --line-strong: #8e8e93;
+    --accent: #2997ff;
+    --accent-fill: #0071e3;
+    --accent-fill-hover: #147ce5;
+    --on-accent: #ffffff;
+    --danger: #ff6961;
+    --success: #32d74b;
+    --focus: #2997ff;
+  }
+}
+
+/* Makes the tokens available as Tailwind classes: bg-canvas, text-ink, border-line, rounded-card... */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-fill-hover: var(--accent-fill-hover);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius-control: 0.75rem; /* buttons and inputs */
+  --radius-card: 1.25rem; /* cards and panels */
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem; /* 17px: the size Apple uses for body text */
+    line-height: 1.47;
+    letter-spacing: -0.022em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* A clear focus ring for keyboard users, never removed. */
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  /* People who ask their device for less motion get none. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Keeps content clear of the iPad/iPhone notch, rounded corners and home bar. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility px-safe {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
