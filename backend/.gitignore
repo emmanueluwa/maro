@@ -1,0 +1,113 @@
+# ==========================================
+# Python & FastAPI Core
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments (venv, uv, Poetry, Conda)
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# Environment Variables & Secrets (API Keys!)
+.env
+.env.*
+!.env.example
+
+# Testing, Linting & Type Checking (Pytest, Ruff, Mypy)
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# ==========================================
+# AI Engineering, Data & ML Artifacts
+# ==========================================
+# Model Weights & Checkpoints
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.gguf
+*.ckpt
+*.h5
+*.pkl
+*.joblib
+models/
+checkpoints/
+
+# Local Vector Databases & Search Indexes
+chroma/
+*.chroma
+qdrant_storage/
+faiss_index/
+*.faiss
+lancedb/
+*.lance
+milvus_data/
+weaviate_data/
+
+# Local SQLite / DuckDB / Cache Databases
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+.cache/
+__marimo__/
+
+# Datasets & Raw Data Files
+data/
+datasets/
+*.csv
+*.parquet
+*.arrow
+*.jsonl
+# Keep small test fixtures if needed:
+!tests/fixtures/*.json
+!tests/fixtures/*.csv
+
+# Jupyter Notebooks & Checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# Experiment Tracking & Observability Logs
+mlruns/
+wandb/
+.neptune/
+logs/
+*.log
+
+# ==========================================
+# OS & Editor Defaults (if not in root)
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+commands.txt

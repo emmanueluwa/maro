@@ -13,13 +13,17 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.auth.login import router as login_router
 from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.db import check_connection, create_engine, create_session_factory
+from app.email import create_email_sender
 
 logger = logging.getLogger("app")
 
@@ -85,12 +89,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = create_engine(get_settings())
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.email_sender = create_email_sender(get_settings())
     logger.info("database connection pool created")
     try:
         yield
     finally:
         await engine.dispose()
         logger.info("database connection pool closed")
+
+
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Say WHICH field is wrong, never repeat WHAT was sent.
+
+    FastAPI's default reply echoes the offending input back. That repeats whatever a person
+    typed (possibly a code or a password) and, for text that cannot be encoded such as a lone
+    surrogate character, crashes with a 500 that anyone could trigger.
+    """
+    problems = [
+        {"loc": list(error["loc"]), "type": error["type"], "msg": error["msg"]}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": problems})
 
 
 def create_app() -> FastAPI:
@@ -108,6 +129,8 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url=None if settings.is_production else "/openapi.json",
     )
+
+    app.add_exception_handler(RequestValidationError, validation_error_handler)
 
     app.add_middleware(
         CORSMiddleware,
@@ -132,6 +155,7 @@ def create_app() -> FastAPI:
         return {"status": "unavailable"}
 
     app.include_router(auth_router)
+    app.include_router(login_router)
 
     return app
 

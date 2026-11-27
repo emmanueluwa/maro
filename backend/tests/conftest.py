@@ -41,6 +41,9 @@ os.environ["APP_ENVIRONMENT"] = "development"
 os.environ["APP_LOG_LEVEL"] = "INFO"
 os.environ["APP_ALLOWED_ORIGINS"] = '["http://localhost:3000"]'
 os.environ["APP_DATABASE_URL"] = DEV_DATABASE_URL
+os.environ["APP_SECRET_KEY"] = (
+    "test-suite-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz"
+)
 
 
 @pytest.fixture(scope="session")
